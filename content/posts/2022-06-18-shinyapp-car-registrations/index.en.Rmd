@@ -1,0 +1,12 @@
+---
+title: "Shiny App for registrations"
+author: "Ricardo Landolt"
+date: 2022-06-18
+categories: ["R"]
+tags: ["rselenium", "scraping", "shadowr"]
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE)
+```
+
