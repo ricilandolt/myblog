@@ -10,3 +10,161 @@ tags: [ "scraping", "analysis"]
 knitr::opts_chunk$set(collapse = TRUE)
 ```
 
+## Introduction 
+
+In this post we are doing some analysis with the data from carforyou. I'm also scraping autoscout and if you are interested in some specific analysis, you can contact me. The analysis should mainly show what can be done with the data and are not in all cases  meaningful.  
+
+
+```{r, echo=FALSE, warning=FALSE,message=FALSE}
+library(knitr)
+library(ggplot2)
+library(plotly)
+library(tidyr)
+library(lubridate)
+library(dplyr)
+
+df <- readRDS("index.en_files/base.rds")
+chassis <- readRDS("index.en_files/chassis.rds")
+filtered <- readRDS("index.en_files/imholz.rds")
+chassis <- chassis %>% 
+  mutate(serialNumber = gsub("\\.","",serialNumber)) %>% 
+  filter(!is.na(frameNumber) & !is.na(serialNumber)) %>% 
+  distinct()
+```
+
+## Framenumbers and Serialnumbers 
+
+There are `r format(nrow(chassis), big.mark = "'")` unique combinations of framenumbers and serialnumbers on carforyou, which are maybe interesting to gather for some reason. 
+
+```{r , echo=FALSE, warning=FALSE,message=FALSE}
+ chassis %>% head() %>% kable()
+```
+
+## Overview
+
+In the plot below you see the top most common vehicles on the platform. 
+
+```{r occurences of models in general, echo=FALSE, warning=FALSE,message=FALSE}
+df_model_complete <- df %>% 
+  group_by(model) %>% 
+  summarise(count=sum(count), downtime=mean(downtime)) 
+  
+plot_ly(df_model_complete %>%
+          slice_max(count,n=40), x=~reorder(model,desc(count)), y=~count, type="bar")  %>%
+  layout(xaxis=list(title=""))
+
+```
+
+This visualization shows the models with the longest time on the platform. 
+
+```{r downtime top 40, echo=FALSE, warning=FALSE,message=FALSE}
+plot_ly(df_model_complete %>%slice_max(count,n=40), x=~reorder(model,desc(downtime)), y=~downtime, type="bar")  %>%
+  layout(xaxis=list(title=""))
+```
+
+The distribution of the prices is shown in the histogram below. 
+
+```{r histogram of prices in general, echo=FALSE, warning=FALSE,message=FALSE}
+plot_ly(filter(df,price < 200000), x=~price, type = "histogram")
+```
+
+
+## Comparison of specific dealerships 
+
+To show some possible comparsions we chose two dealerships, Imholz Autohaus in Cham and Autohaus Imholz in Ebikon. 
+
+First we compare how many vehicles they have on the platform per brand. 
+
+```{r specific dealer per brand, echo=FALSE, warning=FALSE,message=FALSE}
+#per brand
+df_brandperdealer <-  filtered %>% 
+  group_by(dealername,marke) %>%
+  summarise(count=sum(count),,downtime = mean(downtime), discount = mean(discount, na.rm=TRUE),price = mean(price)) %>% ungroup()
+#amount
+plot_ly(df_brandperdealer, x=~dealername, y=~count, type="bar",color=~marke) %>%
+  layout(xaxis=list(title=""))
+```
+
+
+Now we do the same but this time per model. 
+
+```{r specific dealer per model, echo=FALSE, warning=FALSE,message=FALSE}
+model_df <- filtered %>%
+  group_by(dealername, model) %>%
+  summarise(count=sum(count),downtime = mean(downtime), discount = mean(discount,na.rm=TRUE),price = mean(price))
+plot_ly(model_df, x=~dealername, y=~count, type="bar",color=~model) %>%
+  layout(xaxis=list(title=""))
+```
+
+With the boxplot visualization below we can compare the price ranges per brand for the two dealerships. 
+
+```{r specific dealer price boxplot per brand, echo=FALSE, warning=FALSE,message=FALSE}
+plot_ly(filtered, x=~dealername, y=~price, type="box",color=~marke) %>%
+  layout(xaxis=list(title=""),boxmode = "group")
+
+```
+
+The following histogram shows a general comparsion of the prices between the two dealerships. 
+
+```{r specific dealer price histogram, echo=FALSE, warning=FALSE,message=FALSE}
+plot_ly(filtered, x=~price, type="histogram", color=~dealername) %>% 
+  layout(barmode = "stack")
+
+```
+Let's visualise the discount ranges per brand. 
+
+```{r specific dealer discount boxplot per brand, echo=FALSE, warning=FALSE,message=FALSE}
+
+plot_ly(filtered, x=~dealername, y=~discount, type="box",color=~marke) %>%
+  layout(xaxis=list(title=""),boxmode = "group")
+```
+Next you can see the ranges in terms of the time on the platform. 
+
+```{r specific dealer downtime boxplot per brand, echo=FALSE, warning=FALSE,message=FALSE}
+#downtime 
+plot_ly(filtered, x=~dealername, y=~downtime, type="box",color=~marke) %>%
+  layout(xaxis=list(title=""),boxmode = "group")
+```
+
+
+We can also compare how many cars they have per cartype. 
+
+
+```{r specific dealer count per type, echo=FALSE, warning=FALSE,message=FALSE}
+
+type_df <- filtered %>%
+  group_by(dealername, type) %>% 
+  summarise(count=sum(count))
+plot_ly(type_df,x=~dealername, y=~count,type="bar", color=~type)%>%
+  layout(xaxis=list(title=""))
+
+```
+
+
+It is also possible to do some comparisons for multiple dealers in a region.
+
+```{r specific dealer downtime boxplot, echo=FALSE, warning=FALSE,message=FALSE}
+df_dealers <- df %>% 
+  filter(grepl("Imholz|AMAG zug|bentley zug|kessel auto zug|mb auto center|nettocars|porsche zentrum zug, risch|topcarzug",dealername,ignore.case = TRUE))
+
+plot_ly(df_dealers, 
+        x=~dealername , y=~downtime ,type="box", color=~type) %>% 
+  layout(xaxis=list(title=""),boxmode = "group")
+```
+
+## Conclusion 
+
+In this post we have done some quick analysis and have seen that with data from carforyou or autoscout, you can get a lot of insights. It would be also possible to do some region based analysis or implement a system, which send some price alerts based on the comparsion with the competitors. There is a big potential for different analysis and applications.
+
+
+
+
+
+
+
+
+
+
+
+
+
