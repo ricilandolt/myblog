@@ -7,7 +7,6 @@ pygmentsstyle: b2
 pygmentscodefences: yes
 pygmentscodefencesguesssyntax: yes
 pygmentsUseClasses: yes
-disqusShortname: yourdiscussshortname
 params:
   author: Ricardo Landolt
   avatarurl: img/ricardo.jpg
