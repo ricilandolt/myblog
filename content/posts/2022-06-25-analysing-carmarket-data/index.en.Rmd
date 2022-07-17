@@ -22,10 +22,14 @@ library(plotly)
 library(tidyr)
 library(lubridate)
 library(dplyr)
+library(openxlsx)
+library(leaflet)
 
 df <- readRDS("index.en_files/base.rds")
 chassis <- readRDS("index.en_files/chassis.rds")
 filtered <- readRDS("index.en_files/imholz.rds")
+region <- readRDS("index.en_files/region.rds")
+map <- readRDS("index.en_files/gadm36_CHE_1_sp.rds")
 chassis <- chassis %>% 
   mutate(serialNumber = gsub("\\.","",serialNumber)) %>% 
   filter(!is.na(frameNumber) & !is.na(serialNumber)) %>% 
@@ -150,6 +154,52 @@ df_dealers <- df %>%
 plot_ly(df_dealers, 
         x=~dealername , y=~downtime ,type="box", color=~type) %>% 
   layout(xaxis=list(title=""),boxmode = "group")
+```
+
+On the map below you can see the number of vehicles that are online per canton. 
+
+```{r vehicles online per canton, echo=FALSE, warning=FALSE, message=FALSE}
+
+zip <-  read.xlsx("index.en_files/Postleitzahlen-Schweiz.xlsx") %>%
+  rename(PLZ = `Postleitzahl./.Code.Postal./.Codice.Postale`, KTKuerzel = `Abkürzung./.Abréviation./.Abbreviazione`) %>%
+  mutate(KTKuerzel = paste0("CH.",KTKuerzel))
+
+zipregion <- region %>%
+  mutate(zipCode = as.numeric(zipCode)) %>%
+  inner_join(zip, by = c("zipCode" = "PLZ")) %>%
+  group_by(KTKuerzel) %>%
+  summarise(downtime = round(mean(downtime, na.rm = TRUE)),
+            discount = round(mean(discount, na.rm = TRUE)),
+            price = round(mean(price, na.rm = TRUE)),
+            n = sum(count))
+
+dfmap <- as.data.frame(map) %>%
+    inner_join(zipregion, by = c("HASC_1" = "KTKuerzel"))
+rownames(dfmap)  <- as.numeric(row.names(map)) 
+sptmp <- SpatialPolygonsDataFrame(map,dfmap, match.ID = TRUE)
+
+qpal <- colorQuantile("YlGnBu", as.numeric(sptmp$n), n = 5)
+npal <- colorNumeric("YlGnBu", as.numeric(sptmp$n), n = 3)
+pal <- npal
+
+tooltip <- paste0(
+  "<b>Canton: </b>",sptmp$NAME_1, "<br/>",
+  "<b>No. of Vehicles: </b>",format(as.numeric(sptmp$n), big.mark = "'"), "<br/>",
+  "<b>Avg. Vehicle Price: </b>",format(as.numeric(sptmp$price), big.mark = "'"), "<br/>",
+  "<b>Avg. Time online in days: </b>",format(as.numeric(sptmp$downtime), big.mark = "'"), "<br/>"
+) %>%
+  lapply(htmltools::HTML)
+
+leaflet() %>%
+  addTiles() %>%
+  addPolygons(data = sptmp, stroke = TRUE, color = "black", weight = 1, smoothFactor = 0.5,
+              opacity = 1.0, fillOpacity = 0.5, fillColor = ~pal(sptmp$n),
+              highlightOptions = highlightOptions(color = "black", weight = 2, bringToFront = TRUE),
+              label = tooltip,
+              labelOptions = labelOptions(textsize = "12px")) %>%
+  addLegend("bottomright", pal = pal, values = as.numeric(sptmp$n), title = "No. of vehicles online", opacity = 1)
+
+  
 ```
 
 ## Conclusion 
