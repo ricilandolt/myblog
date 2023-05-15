@@ -55,7 +55,7 @@ languages:
     params:
       author: Ricardo Landolt
       description: Ricardo Landolt's personal website
-      info: PASSIONATE R PROGRAMMER
+      info:  FULL STACK DEVELOPER
       keywords: blog,developer,personal
     title: Ricardo Landolt
 
